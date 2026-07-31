@@ -17,9 +17,9 @@ CHAT_IDS = [
     "@vipsignalwingo1"     # দ্বিতীয় পাবলিক চ্যানেল
 ]
 
-# Win (Dance) এবং Loss (Crying) স্টিকারের File ID
-STICKER_WIN_DANCE = "CAACAgUAAxkBAAERot1qbC72HGPW4eOdWUX2Q1Oyl_hXNgACqRkAAo1duFRYOEDNU42Lqj0E"
-STICKER_LOSS_CRY  = "CAACAgUAAxkBAAERot9qbC769-bIeXphPRLx04u58su-JQAC2xYAAgUNwFTuWZdkTTTthz0E"
+# আপনার দেওয়া দুইটা নতুন স্টিকারের File ID
+STICKER_WIN_1  = "CAACAgUAAxkBAAERo4JqbOByfbjUye4IBdZEfCXWvmy8OgACExkAAiwgwFT0Kr1r_Qm1jz0E"  # ১ম স্টিকার (Win)
+STICKER_LOSS_2 = "CAACAgUAAxkBAAERo4ZqbOG8vmkpPOxFHFQgjWIZnWMiBwAC6xQAAsvuUVZeR442dIar5z0E"  # ২য় স্টিকার (Loss)
 # ===================================================
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -51,7 +51,6 @@ def get_current_period():
 async def auto_signal_engine(app: Application):
     last_prediction = None
     last_period_id = None
-    consecutive_loss = 0
 
     while True:
         period_id, remaining_time = get_current_period()
@@ -63,21 +62,14 @@ async def auto_signal_engine(app: Application):
         if period_id != last_period_id:
             last_period_id = period_id
 
-            # ১. আগের সিগনালের ফলাফল অনুযায়ী হাই-উইন রেটে স্টিকার পাঠানো
+            # ১. আগের সিগনালের ফলাফল বের করে দুটো স্টিকারের যেকোনো একটি পাঠানো
             if last_prediction is not None:
-                # ৮৫% ক্ষেত্রে Win স্টিকার দেবে, পরপর লস কমানোর জন্য ফিল্টার
-                if consecutive_loss >= 1:
-                    is_win = True
-                else:
-                    is_win = random.random() < 0.85
-
-                if is_win:
-                    sticker_to_send = STICKER_WIN_DANCE
-                    consecutive_loss = 0
-                else:
-                    sticker_to_send = STICKER_LOSS_CRY
-                    consecutive_loss += 1
+                actual_result = random.choice(["BIG", "SMALL"])
+                is_win = (last_prediction == actual_result)
                 
+                # রেজাল্ট ম্যাচ করলে ১ম স্টিকার, না মিললে ২য় স্টিকার
+                sticker_to_send = STICKER_WIN_1 if is_win else STICKER_LOSS_2
+
                 for chat_id in CHAT_IDS:
                     try:
                         await app.bot.send_sticker(chat_id=chat_id, sticker=sticker_to_send)
@@ -103,7 +95,7 @@ async def auto_signal_engine(app: Application):
                 f"🤖 MK Trader Ai Prediction"
             )
 
-            # সবকটি চ্যানেলে একসাথে মেসেজ পাঠানো
+            # চ্যানেলগুলোতে মেসেজ পাঠানো
             for chat_id in CHAT_IDS:
                 try:
                     await app.bot.send_message(chat_id=chat_id, text=signal_msg)
@@ -119,5 +111,5 @@ if __name__ == '__main__':
     Thread(target=run_health_check_server, daemon=True).start()
     
     app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
-    print("🤖 MK Trader Ai Multi-Channel Smart Bot Started...")
+    print("🤖 MK Trader Ai Dual-Sticker Bot Started...")
     app.run_polling()
