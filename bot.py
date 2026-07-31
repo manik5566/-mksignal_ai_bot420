@@ -9,7 +9,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, Application, CommandHandler, ContextTypes
 
 # ==================== কনফিগারেশন ====================
-TOKEN = "8665132024:AAFqHP1LTJ3HwLOrpm_8sDVk_QtjBYmLGAM"  # আপনার নতুন BotFather Token
+TOKEN = "8665132024:AAFqHP1LTJ3HwLOrpm_8sDVk_QtjBYmLGAM"  # আপনার BotFather Token
 
 # আপনার দুটি চ্যানেলের আইডি ও ইউজারনেম
 CHAT_IDS = [
@@ -51,6 +51,7 @@ def get_current_period():
 async def auto_signal_engine(app: Application):
     last_prediction = None
     last_period_id = None
+    consecutive_loss = 0
 
     while True:
         period_id, remaining_time = get_current_period()
@@ -62,12 +63,20 @@ async def auto_signal_engine(app: Application):
         if period_id != last_period_id:
             last_period_id = period_id
 
-            # ১. আগের সিগনালের ফলাফল অনুযায়ী সব চ্যানেলে স্টিকার পাঠানো
+            # ১. আগের সিগনালের ফলাফল অনুযায়ী হাই-উইন রেটে স্টিকার পাঠানো
             if last_prediction is not None:
-                actual_result = random.choice(["BIG", "SMALL"])
-                is_win = (last_prediction == actual_result)
-                
-                sticker_to_send = STICKER_WIN_DANCE if is_win else STICKER_LOSS_CRY
+                # ৮৫% ক্ষেত্রে Win স্টিকার দেবে, পরপর লস কমানোর জন্য ফিল্টার
+                if consecutive_loss >= 1:
+                    is_win = True
+                else:
+                    is_win = random.random() < 0.85
+
+                if is_win:
+                    sticker_to_send = STICKER_WIN_DANCE
+                    consecutive_loss = 0
+                else:
+                    sticker_to_send = STICKER_LOSS_CRY
+                    consecutive_loss += 1
                 
                 for chat_id in CHAT_IDS:
                     try:
@@ -76,14 +85,14 @@ async def auto_signal_engine(app: Application):
                         print(f"Sticker Send Error for {chat_id}: {e}")
 
             # ২. নতুন সিগনাল তৈরি
-            chosen_type = random.choice(["BIG", "SMALL"]) 
+            chosen_type = random.choice(["BIG", "SMALL"])
             last_prediction = chosen_type
             
             if chosen_type == "BIG":
-                number = random.randint(5, 9)
+                number = random.choice([5, 6, 7, 8, 9])
                 prediction_icon = "BIG 🔼"
             else:
-                number = random.randint(0, 4)
+                number = random.choice([0, 1, 2, 3, 4])
                 prediction_icon = "SMALL 🔽"
 
             signal_msg = (
@@ -110,5 +119,5 @@ if __name__ == '__main__':
     Thread(target=run_health_check_server, daemon=True).start()
     
     app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
-    print("🤖 MK Trader Ai Multi-Channel Bot Started...")
+    print("🤖 MK Trader Ai Multi-Channel Smart Bot Started...")
     app.run_polling()
